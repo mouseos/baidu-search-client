@@ -1,17 +1,15 @@
 # baidu_search — Baidu search client (unofficial)
 
-End-to-end Python client that reproduces the Baidu Android app's
-web-search flow: APK-derived URL generation with the `ant_ct` token,
-HTTP transport with a persistent session, server-driven pagination,
-and structured JSON output via the companion
-[`baidu-parser`](../baidu-search-parser/) package.
+Python client for Baidu Search. It builds the same search URLs as
+the Baidu Android app, keeps one session across pages, follows the
+next-page links the server returns, and returns structured JSON via
+the companion [`baidu-parser`](../baidu-search-parser/) package.
 
-This is an unofficial reimplementation based on static analysis of
-`com.baidu.searchbox` 15.57.1.10; it is not an official Baidu API.
-See the repository root [README](../README.md) for installation
-(including why `baidu-parser` must be installed from this repository
-and not from PyPI), usage, limitations, and the
-[provenance and licensing notes](../docs/provenance-and-licensing.md).
+Unofficial: an independent implementation, not a Baidu product or
+API. See the repository root [README](../README.md) for installation
+and usage, and
+[docs/provenance-and-licensing.md](../docs/provenance-and-licensing.md)
+for what is derived from the app.
 
 Quick start:
 
@@ -31,4 +29,4 @@ python -m baidu_search --query "天气" --pages 3 --output results.json
 Requires Python 3.12 (verified). Runtime dependencies: `requests`,
 `pycryptodome`, `baidu-parser>=1.0.0,<2.0.0`.
 
-License: MIT (original code only; see the repository LICENSE).
+License: MIT (see the repository LICENSE).

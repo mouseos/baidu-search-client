@@ -1,4 +1,4 @@
-"""baidu_search — end-to-end Baidu (Android-app flow) search client.
+"""baidu_search — Python client for Baidu Search.
 
     from baidu_search import BaiduSearchClient
 
@@ -6,12 +6,9 @@
         result = client.search("天气", max_pages=3)
     print(result.to_dict())
 
-The fetching side embeds the APK-derived URL generation and
-``ant_ct`` implementation validated in ``work/python-validation/``
-(vendored into :mod:`baidu_search.urlbuild` / :mod:`baidu_search.antct`
-in round 18, with output-consistency tests against the originals);
-the parsing side uses the ``baidu_parser`` package, declared as a
-normal package dependency.
+URL generation and the ``ant_ct`` token live in
+:mod:`baidu_search.urlbuild` and :mod:`baidu_search.antct`; HTML
+parsing is done by the ``baidu_parser`` package.
 """
 
 from . import errors

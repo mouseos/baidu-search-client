@@ -4,18 +4,17 @@ Safety properties (all on by default):
 
 * TLS certificate verification is always on (``verify`` is never
   passed as ``False`` anywhere in this package).
-* Connect/read timeout is mandatory (a single float, as in the
-  validated probes where ``timeout=25`` was used).
+* Connect/read timeout is mandatory (a single float).
 * The response body is streamed and capped at ``max_bytes``; an
   oversized body aborts the request instead of being buffered whole.
-* A minimum interval between requests is enforced; there are **no**
-  automatic retries at all.
+* A minimum interval between requests is enforced; there are no
+  automatic retries.
 * Redirects are followed by ``requests`` (bounded by its own limit),
   but a redirect chain that leaves ``*.baidu.com`` is rejected.
 * HTTP 403 / 429 raise :class:`AccessRestrictedError`; the caller
   stops pagination instead of retrying.
 * Proxy configuration is whatever ``requests`` / the environment
-  provides (``HTTP_PROXY`` etc.) — the standard, legitimate route.
+  provides (``HTTP_PROXY`` etc.).
 """
 
 from __future__ import annotations

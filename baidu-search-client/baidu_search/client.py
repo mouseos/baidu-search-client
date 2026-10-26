@@ -1,9 +1,8 @@
 """Public client API: query string in, structured JSON-able data out.
 
-Pipeline per page (identical to the validated measurement flow):
+Pipeline per page:
 
-    query ─▶ build_initial_search_url (legacy search_probe, ant_ct in
-             seconds via legacy crypto)
+    query ─▶ build_initial_search_url (ant_ct timestamp in seconds)
           ─▶ HttpTransport GET through one SearchSession (cookies kept)
           ─▶ response sanity checks (not just "HTTP 200")
           ─▶ baidu_parser.parse_search_results
@@ -14,9 +13,9 @@ transport:
 
 * verification pages: strong markers (``wappass`` host references,
   ``安全验证``) in a body that has no ``#results`` container raise
-  :class:`CaptchaDetectedError`.  This is deliberately distinct from
-  the known quirk where a *single result's stored title* is a WAF
-  page title — that case keeps the page usable and is reported as a
+  :class:`CaptchaDetectedError`.  This is distinct from the case
+  where a single result's stored title is a WAF page title: the page
+  is still a valid results page, so that case is reported as a
   warning instead.
 * a 200 page with neither ``#results`` nor any ``.c-result`` raises
   :class:`NotSearchResultError`.
@@ -47,7 +46,7 @@ _WAF_TITLE_MARKERS = ("应用防火墙", "WEB 应用防火墙")
 
 
 class BaiduSearchClient:
-    """End-to-end Baidu (APK-flow) search client.
+    """Baidu search client.
 
     Parameters mirror the safety limits: ``timeout`` (seconds,
     connect+read), ``max_pages_limit`` (hard cap for ``search()``),

@@ -1,8 +1,8 @@
 """URL handling.
 
-Rules (from the measured HTML, see ../url-extraction.md):
+Rules (see docs/parser/url-extraction.md):
 
-* URLs are kept **verbatim** as found in the HTML (after HTML entity
+* URLs are kept verbatim as found in the HTML (after HTML entity
   decoding, which the DOM parser already performs).  Tracking parameters
   are never stripped and redirect targets are never guessed.
 * Relative hrefs are resolved against the page URL with ``urljoin`` —
@@ -52,7 +52,7 @@ def classify_click_url(url: Optional[str]) -> Optional[str]:
     Returns one of:
       * ``baidu_redirect``  – http(s) URL on a Baidu host whose path ends
         with the ``/tc`` click-tracking segment (the wise click-through
-        endpoint observed in the measured pages).
+        endpoint used by the result pages).
       * ``baidu_app_scheme`` – ``baiduboxapp://`` deep link into the app.
       * ``baidu_internal``  – other http(s) URL on a Baidu host.
       * ``direct_external`` – http(s) URL on a non-Baidu host.

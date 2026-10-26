@@ -4,7 +4,7 @@ Parses Baidu (wise) search-result HTML — as served to the Baidu
 Android app — into structured JSON: organic results, ads, special
 cards (weather, knowledge graph, encyclopedia, dictionary, AI answer,
 video, live, forum, notes, official accounts), related searches, and
-pagination. Pure HTML processing; **no network access**.
+pagination. Pure HTML processing; no network access.
 
 ```python
 from baidu_parser import parse_search_results
@@ -25,8 +25,8 @@ unknown elements rather than being forced into a category.
 
 Requires Python 3.12 (verified). Runtime dependency: `lxml` only.
 
-This package is not published on PyPI; install it from this
-repository as described in the root [README](../README.md).
+Not published on PyPI; install it from this repository as described
+in the root [README](../README.md).
 See [docs/parser/](../docs/parser/) for the HTML structure analysis,
 classification rules, URL extraction, and validation report.
 

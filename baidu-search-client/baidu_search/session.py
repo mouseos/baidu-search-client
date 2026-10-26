@@ -16,7 +16,7 @@ import requests
 from . import search_url
 
 _DEFAULT_HEADERS = {
-    "Accept": "text/html,*/*",  # same Accept as the validated probes
+    "Accept": "text/html,*/*",
 }
 
 

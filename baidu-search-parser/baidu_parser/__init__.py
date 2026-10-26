@@ -1,4 +1,4 @@
-"""baidu_parser — structured extraction from Baidu APK (wise) search HTML."""
+"""baidu_parser — structured extraction from Baidu (wise) search-result HTML."""
 
 from .parser import PARSER_VERSION, parse_search_results
 

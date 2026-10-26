@@ -1,15 +1,14 @@
 """Pagination extraction from ``div.new-pagenav``.
 
-Measured structure (see ../pagination-structure.md):
+Structure (see docs/parser/pagination-structure.md):
 
 * First page: one ``.new-pagenav`` block with only a next-page anchor
   (``pn=10``).  No current-page label.
-* Later pages: the block is repeated by SSR (observed 4 copies) — only
-  the first is used.  ``a.new-prepage`` = previous page,
-  ``a.new-firstpage`` = first page (present from page 3),
-  ``a.new-nextpage`` = next page, ``span.new-nowpage`` shows
-  ``第 N 页``.  On the last measured page the right cell is empty,
-  i.e. there is no next page.
+* Later pages: the block can be repeated by SSR — only the first is
+  used.  ``a.new-prepage`` = previous page, ``a.new-firstpage`` =
+  first page (present from page 3), ``a.new-nextpage`` = next page,
+  ``span.new-nowpage`` shows ``第 N 页``.  On the last page the right
+  cell is empty, i.e. there is no next page.
 * Server-issued URLs are kept verbatim (they contain server-generated
   ``ant_ct`` / ``rsv_pq`` values; nothing is regenerated).
 """

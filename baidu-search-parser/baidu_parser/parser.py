@@ -7,8 +7,7 @@ Usage::
     data = page.to_dict()
 
 The parser performs no network access.  It expects the HTML produced by
-the mobile ("wise") search endpoint the Android app renders, as saved
-under ``work/python-validation/response_samples/``.
+the mobile ("wise") search endpoint the Android app renders.
 """
 
 from __future__ import annotations

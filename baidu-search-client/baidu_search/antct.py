@@ -1,55 +1,41 @@
 # -*- coding: utf-8 -*-
 """
-ant_ct 生成処理 (baidu_search パッケージ内蔵版)
-対象: Baidu公式Androidアプリ com.baidu.searchbox 15.57.1.10
+Generation of the ``ant_ct`` token for Baidu search URLs, as
+implemented by the Baidu Android app (com.baidu.searchbox 15.57.1.10).
 
-来歴 (第18ラウンドで正式パッケージへ組み込み):
-  本モジュールは検証用プローブ work/python-validation/crypto.py の
-  移設版である。移設に伴う変更は本 docstring の来歴追記とモジュール名の
-  変更のみで、定数・関数本体は一切変更していない。出力一致は
-  tests/test_packaging_consistency.py がレガシー実装と固定ベクタで
-  照合する。元ファイルは検証プローブとして残置され、実行時には
-  読み込まれない。
+Specification, from the app code:
 
-再現元 (APK静的解析の確定事項):
-  - Java 側: bq0.m.h(String) (SearchUrlGenerator, classes12)
+  - Java side: ``bq0.m.h(String)`` (SearchUrlGenerator, classes12)
         text = "t=" + DateTimeUtil.getCalibratedTime()
              + "&w=" + zk9.c.c(query.getBytes(), false)
         ant_ct = URLEncoder.encode(EncryptDecryptUtils.encrypt(text), "UTF-8")
-  - w: zk9.c.c(byte[], boolean) (classes13)
-        = MessageDigest.getInstance("MD5") の digest を16進文字列化
-          (第2引数 false のとき小文字)
-  - encrypt: libAntctEncrypt.so の JNI
-        Java_com_baidu_searchbox_encrypt_decrypt_EncryptDecryptUtils_encrypt
-        (REA/Ghidra デコンパイル: logs/rea-decompile-antct-encrypt.log)
+  - ``w``: ``zk9.c.c(byte[], boolean)`` (classes13) is the MD5 digest
+    as a hex string (lowercase when the second argument is false).
+  - ``encrypt`` is the JNI function
+    ``Java_com_baidu_searchbox_encrypt_decrypt_EncryptDecryptUtils_encrypt``
+    in libAntctEncrypt.so.
 
-鍵・IV の生成元と依存関係:
-  端末・ユーザー・時刻には一切依存しない「APK内蔵の固定値」である。
-  JNI 本体は .rodata 内の 44 文字 Base64 リテラル 2 本を base64_decode し、
-    鍵     = リテラル1 のデコード結果(32B)の先頭16バイト
-    IV     = リテラル2 のデコード結果(32B)の先頭16バイト
-  を AES::MakeKey(key, chain, keyLen=0x10, blockLen=0x10) へ渡す。
-  リテラル文字列そのものは難読化を兼ねており、デコードすると
-  ASCII 文字列 + NUL + 別文字列 という形になる (先頭16Bのみが有効)。
-  下記 KEY_B64_LITERAL / IV_B64_LITERAL はその .rodata リテラルを
-  そのまま保持したもので、デコード→先頭16B の手順もAPKどおりに再現する。
+Key and IV: fixed values built into the app; they do not depend on
+the device, the user, or the time.  The JNI code base64-decodes two
+44-character literals from .rodata and passes the first 16 bytes of
+each decoded value (32 bytes each) to ``AES::MakeKey`` as key and IV
+(keyLen = blockLen = 0x10).  The decoded literals have the form
+"ASCII string + NUL + another string"; only the first 16 bytes are
+used.  ``KEY_B64_LITERAL`` / ``IV_B64_LITERAL`` below hold those
+literals, and the decode-then-take-16-bytes step follows the app.
 
-暗号処理 (AES::Encrypt mode=1 の構造):
-  AES-128-CBC, PKCS#7 パディング
-    パディング長 = 16 - (len % 16)  (len が16の倍数なら16のフルブロック)
-    パディングバイト値 = パディング長
-  出力は base64_encode した文字列。Java 側でさらに URLEncoder される。
+Cipher (the ``AES::Encrypt`` mode=1 path): AES-128-CBC with PKCS#7
+padding.  Pad length = 16 - (len % 16), i.e. a full block when the
+length is a multiple of 16; each pad byte equals the pad length.
+The output is base64-encoded, and the Java side then URL-encodes it.
 
-t (校正時刻) について:
-  DateTimeUtil.getCalibratedTime() (classes12) は
-    String.valueOf((System.currentTimeMillis() / 1000) + mDelta)
-  であり、単位は「秒」である (mDelta は setDeltaTime(String) で
-  サーバ時刻文字列から算出される校正オフセット・秒。未校正時は 0)。
-  本実装では t を引数として受け取る (呼び出し側が秒単位で与える)。
-  ant_ct の暗号部分そのものは t の値に依存しない決定的変換である。
-  【変更履歴 2026-10-25 追加検証】当初版は「ミリ秒」と誤記し、
-  前回プローブはミリ秒値を t に渡していた。APKコード確認により
-  秒単位へ訂正した (crypto-independent-validation.md 参照)。
+The ``t`` value: ``DateTimeUtil.getCalibratedTime()`` (classes12) is
+``String.valueOf((System.currentTimeMillis() / 1000) + mDelta)``, so
+the unit is seconds.  ``mDelta`` is a calibration offset in seconds,
+derived from a server time string by ``setDeltaTime(String)``; it is
+0 when uncalibrated.  This module takes ``t`` as an argument and
+callers pass seconds.  The encryption itself is a deterministic
+function of the plaintext.
 """
 
 import base64
@@ -58,12 +44,11 @@ import urllib.parse
 
 from Crypto.Cipher import AES
 
-# libAntctEncrypt.so .rodata 内の Base64 リテラル (44文字 x 2)
-# 根拠: logs/rea-decompile-antct-encrypt.log の擬似コード
+# Base64 literals from libAntctEncrypt.so (.rodata), 44 chars each.
 KEY_B64_LITERAL = "aGVsbF9iYWlkX2JveGFwcABib3hhcHBfYmFpZF9oZWw="
 IV_B64_LITERAL = "Ym94YXBwX2JhaWRfaGVsbABPYmplY3Qgbm90IEluaXQ="
 
-# APK の手順どおり: デコード結果の先頭16バイトが鍵 / IV
+# As in the app: the first 16 bytes of each decoded literal.
 _KEY = base64.b64decode(KEY_B64_LITERAL)[:16]
 _IV = base64.b64decode(IV_B64_LITERAL)[:16]
 
@@ -71,22 +56,24 @@ BLOCK = 16
 
 
 def md5_hex_lower(data: bytes) -> str:
-    """zk9.c.c(byte[], false): MD5 digest の16進文字列 (小文字)"""
+    """zk9.c.c(byte[], false): MD5 digest as a lowercase hex string."""
     return hashlib.md5(data).hexdigest()
 
 
 def build_plaintext(calibrated_time_ms, query: str) -> str:
     """
-    bq0.m.h() の平文組立。
-    注意: APK では query.getBytes() (プラットフォーム既定文字セット) を使う。
-    Android の既定は UTF-8 のため、ここでも UTF-8 で符号化する。
+    The plaintext assembled by bq0.m.h().
+
+    The app uses query.getBytes() (the platform default charset).
+    Android's default is UTF-8, so the query is encoded as UTF-8 here
+    too.  The time value is in seconds (see the module docstring).
     """
     w = md5_hex_lower(query.encode("utf-8"))
     return "t={}&w={}".format(calibrated_time_ms, w)
 
 
 def _pkcs7_pad(data: bytes) -> bytes:
-    """JNI 本体のパディング: pad_len = 16 - (len % 16), 各バイト = pad_len"""
+    """The JNI padding: pad_len = 16 - (len % 16); each pad byte = pad_len."""
     pad_len = BLOCK - (len(data) % BLOCK)
     return data + bytes([pad_len]) * pad_len
 
@@ -104,9 +91,9 @@ def _pkcs7_unpad(data: bytes) -> bytes:
 
 def antct_encrypt(plaintext: str) -> str:
     """
-    EncryptDecryptUtils.encrypt(String) の再現。
-    入力文字列を UTF-8 バイト列として AES-128-CBC/PKCS#7 で暗号化し、
-    Base64 文字列を返す (Java 側の URLEncoder は呼び出し側の責務)。
+    EncryptDecryptUtils.encrypt(String): encrypt the UTF-8 bytes of
+    the input with AES-128-CBC/PKCS#7 and return base64.  The Java
+    side's URLEncoder step is the caller's responsibility.
     """
     data = _pkcs7_pad(plaintext.encode("utf-8"))
     ct = AES.new(_KEY, AES.MODE_CBC, _IV).encrypt(data)
@@ -114,7 +101,7 @@ def antct_encrypt(plaintext: str) -> str:
 
 
 def antct_decrypt(b64_ciphertext: str) -> str:
-    """検証用: ant_ct (Base64) を復号して平文に戻す。"""
+    """Decrypt an ant_ct value (base64) back to its plaintext."""
     ct = base64.b64decode(b64_ciphertext)
     pt = AES.new(_KEY, AES.MODE_CBC, _IV).decrypt(ct)
     return _pkcs7_unpad(pt).decode("utf-8")
@@ -122,11 +109,14 @@ def antct_decrypt(b64_ciphertext: str) -> str:
 
 def make_ant_ct(calibrated_time_ms, query: str) -> str:
     """
-    bq0.m.h() 全体の再現: 平文組立 → JNI暗号化 → URLEncoder.encode。
-    返り値が URL パラメータ ant_ct の値 (符号化済み) になる。
-    Java の URLEncoder は空白を '+' にする等の差異があるが、
-    Base64 出力に現れる文字は [A-Za-z0-9+/=] のみで、
-    quote_plus(safe='') と等価になる ('+'→%2B, '/'→%2F, '='→%3D)。
+    The whole of bq0.m.h(): assemble the plaintext, encrypt it, and
+    URL-encode the result.  The return value is the (encoded) value
+    of the ant_ct URL parameter.
+
+    Java's URLEncoder differs from quote_plus in general (it encodes
+    spaces as '+', for example), but base64 output only contains
+    [A-Za-z0-9+/=], so quote_plus(safe='') is equivalent here
+    ('+' -> %2B, '/' -> %2F, '=' -> %3D).
     """
     text = build_plaintext(calibrated_time_ms, query)
     enc = antct_encrypt(text)

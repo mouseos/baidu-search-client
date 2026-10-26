@@ -1,17 +1,17 @@
 """Classification of ``.c-result`` elements.
 
 Primary signal: the server-side template id in the ``tpl`` attribute,
-which the measured pages (2026-10-25, com.baidu.searchbox 15.57.1.10)
-use consistently.  Secondary signal for ads: the EC ad markup
+which the result pages (com.baidu.searchbox 15.57.1.10) use
+consistently.  Secondary signal for ads: the EC ad markup
 conventions defined by the ad stylesheet (``<style id="ec_ls_css">``)
-that Baidu ships inside every measured page — ad containers use
-``ec_*`` classes (``.ec_ad_results``, ``.ec_wise_ad``,
-``.ec-material_*``) and carry a visible ``广告`` label.
+shipped inside the result pages — ad containers use ``ec_*`` classes
+(``.ec_ad_results``, ``.ec_wise_ad``, ``.ec-material_*``) and carry a
+visible ``广告`` label.
 
-No measured sample page contained an actual ad result, so the ad branch
-is covered by a synthetic fixture test only (see tests and
-../result-classification.md).  Elements whose template is unknown are
-reported as unknown — never guessed into ``organic``.
+No sample page available to this project contained an actual ad
+result, so the ad branch is covered by a synthetic fixture test only
+(see docs/parser/result-classification.md).  Elements whose template
+is unknown are reported as unknown, not classified as ``organic``.
 """
 
 from __future__ import annotations
