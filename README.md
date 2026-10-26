@@ -1,45 +1,26 @@
 # baidu-search-client
 
-Unofficial Python client for Baidu Search with structured results,
-pagination, and HTML parsing.
+Python client for Baidu Search. It fetches search-result pages the way the Baidu Android app does, follows the next-page links the server returns, and gives back structured JSON: organic results, ads, special cards, and related searches, kept separate.
 
-> **Unofficial.** This project is an independent reimplementation based on
-> static analysis of the Baidu Android app (`com.baidu.searchbox`
-> 15.57.1.10). It is **not** an official Baidu product or API, and it is
-> not affiliated with or endorsed by Baidu. Behavior was reproduced from
-> the app's own search flow and verified against the live service with a
-> small number of anonymous requests; see
-> [docs/provenance-and-licensing.md](docs/provenance-and-licensing.md)
-> for what is APK-derived, what was measured, and the licensing notes.
+This is an unofficial, independent implementation. It is not a Baidu product or API.
 
-## What this repository contains
+## Packages
 
-Two Python packages, developed and versioned together:
-
-| Distribution | Import package | Purpose |
+| Distribution | Import | Contents |
 |---|---|---|
-| `baidu-search` (in `baidu-search-client/`) | `baidu_search` | End-to-end search client: APK-derived URL generation, `ant_ct` token, HTTP transport with a persistent session, pagination, aggregation to JSON |
-| `baidu-parser` (in `baidu-search-parser/`) | `baidu_parser` | Offline parser that turns Baidu (wise) search-result HTML into structured JSON. No network access |
+| `baidu-search` | `baidu_search` | Search client: URL generation, HTTP transport, pagination, JSON aggregation |
+| `baidu-parser` | `baidu_parser` | Offline parser for Baidu search-result HTML. No network access |
 
-`baidu_search` depends on `baidu_parser`. Neither package is published on
-PyPI; install them from this repository as described below.
+`baidu_search` depends on `baidu_parser`. Neither package is on PyPI.
 
-## Requirements
+## Install
 
-- Python **3.12** (the only version verified end-to-end so far;
-  `requires-python` is declared as `>=3.10`, but other versions are not
-  verified)
-- Runtime dependencies: `requests`, `pycryptodome` (client),
-  `lxml` (parser)
+Python 3.12 is the verified version (`requires-python` declares >=3.10). Runtime dependencies are `requests` and `pycryptodome` for the client, `lxml` for the parser.
 
-## Installation
-
-`baidu-parser` is **not** available from PyPI, so pip cannot resolve it
-from the internet. Build both wheels from this repository and let pip
-resolve the dependency locally:
+Build both wheels from this repository, then install with the local `dist` directory as the package source:
 
 ```bash
-git clone https://github.com/mouse-soft/baidu-search-client.git
+git clone https://github.com/mouseos/baidu-search-client.git
 cd baidu-search-client
 
 python3 -m pip install build
@@ -47,168 +28,65 @@ python3 -m build --outdir dist baidu-search-parser
 python3 -m build --outdir dist baidu-search-client
 
 python3 -m pip install --find-links dist baidu-search
-# baidu-parser is resolved from ./dist automatically
 ```
 
-Tagged releases, when published, are listed on the GitHub Releases
-page with prebuilt wheels attached; with both wheel files downloaded
-into a directory, the same `pip install --find-links <dir> baidu-search`
-command works without building.
+Prebuilt wheels are attached to the [v1.0.0 release](https://github.com/mouseos/baidu-search-client/releases/tag/v1.0.0). Download both wheel files into one directory and run the same `pip install --find-links <dir> baidu-search` command there. To install only the parser, use `pip install --find-links dist baidu-parser`.
 
-To install only the parser:
-
-```bash
-python3 -m pip install --find-links dist baidu-parser
-```
-
-## Python API
+## Usage
 
 ```python
 from baidu_search import BaiduSearchClient
 
 with BaiduSearchClient() as client:
-    result = client.search(
-        "天气",
-        max_pages=3,
-    )
+    result = client.search("天气", max_pages=3)
 
 print(result.to_dict())
 ```
 
-A single page can be fetched with `client.search_page(query)`, which
-returns the parser's structured page object. The parser can also be used
-on its own, without any network access:
+`client.search_page(query)` fetches a single page. The output of `search()` contains `query`, `pages_requested`, `pages_fetched`, `results`, `ads`, `cards`, `related_searches`, `unknown_elements`, `pages`, and `diagnostics`. Each result carries `title`, `url` (the external URL as written in the HTML), `click_url` (the Baidu redirect URL, kept as-is), `snippet`, `site_name`, `date`, and rank fields (`display_position`, `organic_rank`, `global_organic_rank`). Fields the HTML does not provide are `null`.
+
+CLI:
+
+```bash
+python -m baidu_search --query "天气" --pages 3 --output results.json
+```
+
+Options: `--timeout`, `--verbose`, and `--from-html <file>` to convert a saved HTML page offline. Output is UTF-8 JSON with non-ASCII text written as-is.
+
+The parser also works on its own, on saved HTML:
 
 ```python
 from baidu_parser import parse_search_results
 
-page = parse_search_results(html_bytes, query="天气",
-                            page_url="https://m.baidu.com/s?word=...")
+page = parse_search_results(html, query="天气", page_url=source_url)
 print(page.to_dict())
 ```
 
-## CLI
+## Behavior
+
+The client makes HTTPS requests to `m.baidu.com` and keeps one session per search: cookies from the first response are sent with later pages, and no cookie values are written to logs or output. Pagination follows the next-page URL found in each page's HTML; the client does not build `pn=` URLs itself, and it stops at the requested page count, when no next URL exists, when a URL repeats, or on an error or access restriction (403, 429, CAPTCHA). If a later page fails, the pages already fetched are returned with the error recorded in `diagnostics.errors`. There are no automatic retries.
+
+## Limitations
+
+- Requests reproduce the app behavior that could be determined statically. Device-dependent parameters are not sent, so requests are not identical to a real device's.
+- One approximation: the signed timestamp uses the current Unix time in seconds, with the app's calibration offset taken as 0 because the offset cannot be observed off-device.
+- The ad classifier was checked against saved pages and a synthetic fixture. No live ad result appeared in the saved pages, so ad separation has not been verified against live ads.
+- Weather-card values and AI-answer text are drawn by the app at runtime and are not in the HTML, so the parser cannot return them.
+- Dates come back as the display strings in the HTML.
+- Baidu can change its HTML or request format at any time. Result layouts the parser does not know are reported under `unknown_elements`.
+- Verified on Linux with Python 3.12 only.
+
+## Tests
+
+Both suites run offline (HTTP is mocked, parsing uses saved fixtures):
 
 ```bash
-python -m baidu_search \
-  --query "天气" \
-  --pages 3 \
-  --output results.json
-```
-
-Options include `--timeout`, `--verbose`, and `--from-html <file>` for
-fully offline conversion of a saved HTML page. The parser has its own
-CLI: `python -m baidu_parser --input search.html --query "天气" --output results.json`.
-Output is UTF-8 JSON with non-ASCII text written as-is
-(`ensure_ascii=False`).
-
-## JSON output
-
-The aggregated result of `BaiduSearchClient.search(...)` has this shape
-(see [docs/client/json-output-schema.md](docs/client/json-output-schema.md)
-for the full schema):
-
-```json
-{
-  "query": "天气",
-  "pages_requested": 3,
-  "pages_fetched": 3,
-  "results": [],
-  "ads": [],
-  "cards": [],
-  "related_searches": [],
-  "unknown_elements": [],
-  "pages": [],
-  "diagnostics": { "duplicates": 0, "errors": [], "warnings": [] }
-}
-```
-
-Each result item keeps the fields produced by the parser, including
-`display_position`, `organic_rank`, `global_organic_rank`, `title`,
-`url` (the external URL exactly as the HTML states it), `click_url`
-(the Baidu redirect URL, preserved verbatim), `url_source`, `snippet`,
-`site_name`, `date`, and a `duplicate` flag. Values that the HTML does
-not provide are `null`; nothing is reconstructed by guessing.
-
-## Pagination
-
-Pagination follows the **server-issued** next-page URL embedded in the
-HTML (`page.next_url`). The client never synthesizes `pn=` URLs and
-never normalizes the URL, so server-issued parameters (including
-`ant_ct`) are passed through untouched. Fetching stops when there is no
-next URL, the requested page count is reached, a URL repeats (cycle),
-the URL is invalid or points to an unexpected host, a transport error
-occurs, or the server returns an access restriction. Duplicates across
-pages are detected by exact URL match and flagged, not deleted.
-
-## Cookies and sessions
-
-One `requests.Session` is used for the whole search: cookies set by the
-first response are kept and sent on subsequent pages, exactly as in the
-validated anonymous measurements. No cookie values are fabricated, and
-cookie values never appear in logs, diagnostics, or error messages.
-Use the client as a context manager (or call `close()`) to release the
-session.
-
-## Error handling
-
-Failures are classified instead of being hidden behind HTTP 200:
-connection/DNS errors, TLS errors, timeouts, HTTP errors, access
-restrictions (403/429/CAPTCHA or verification pages), responses that are
-HTTP 200 but not search-result HTML, HTML parse failures, zero results,
-pagination cycles, invalid next-page URLs, and redirects that leave
-`*.baidu.com` (rejected). If a later page fails, the pages already
-fetched are still returned, with the error recorded in
-`diagnostics.errors`. There are no automatic retries.
-
-## Running the tests
-
-The test suites are fully offline (HTTP is mocked; parsing uses
-bundled, redacted HTML fixtures). CI never contacts Baidu's servers.
-
-```bash
-python3 -m pip install --find-links dist baidu-search pytest
 python3 -m pytest baidu-search-parser/tests -q   # 31 tests
 python3 -m pytest baidu-search-client/tests -q   # 65 tests
 ```
 
-The client suite includes consistency tests proving that the vendored
-URL builder and `ant_ct` implementation produce byte-identical output
-to the original validated probes, kept under
-`baidu-search-client/tests/legacy_reference/`.
-
-## Limitations
-
-- The `ant_ct` timestamp uses the APK's calibrated-time formula with
-  the calibration offset approximated as 0 (the offset cannot be
-  observed outside a device). The timestamp unit is **seconds**.
-- Only the statically reproducible subset of the app's request is
-  reproduced; device-dependent parameters are not sent. Requests are
-  therefore not byte-identical to a real device's.
-- Ads are separated by the parser's classifier, which was verified
-  against the ad markup conventions present in the measured pages'
-  CSS and against a synthetic fixture; no live ad result was present
-  in the measured pages.
-- Weather-card detail values and AI-answer body text are rendered
-  client-side in the app and are not present in the static HTML, so
-  they cannot be extracted.
-- Dates are returned as the display strings found in the HTML.
-- Baidu may change the HTML structure or the request format at any
-  time; unknown result templates are reported as `unknown_elements`
-  rather than being guessed at.
-- Verified only on Linux with Python 3.12.
-
-## Documentation
-
-Design and verification documents are under [`docs/`](docs/):
-integration architecture, HTTP integration, pagination integration,
-JSON schema, HTML structure analysis, result classification, URL
-extraction, dependency audit, security review, and the
-provenance/licensing notes.
+Design notes, the full JSON schema, the HTML structure analysis, and the security review are in [docs/](docs/).
 
 ## License
 
-The original code in this repository is released under the
-[MIT License](LICENSE). The MIT License does **not** extend to Baidu's
-app, services, or content; see
-[docs/provenance-and-licensing.md](docs/provenance-and-licensing.md).
+MIT, for the original code in this repository only. It does not cover Baidu's app, services, or content. Which parts are derived from the app and what to check before redistributing are recorded in [docs/provenance-and-licensing.md](docs/provenance-and-licensing.md).
