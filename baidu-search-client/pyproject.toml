@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "baidu-search"
+version = "1.0.0"
+description = "End-to-end Baidu search client reproducing the Android app (com.baidu.searchbox 15.57.1.10) web-search flow: APK-derived URL generation + ant_ct, session-kept pagination, and structured JSON via baidu_parser."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "requests>=2.31",
+    # ant_ct (baidu_search/antct.py, AES-128-CBC) — vendored in round 18
+    # from the validated work/python-validation/crypto.py.
+    "pycryptodome>=3.19",
+    # HTML parsing is provided by the baidu_parser package, declared as
+    # a normal package dependency (round 18; previously located at
+    # runtime as a sibling directory via _deps.py, which is removed).
+    "baidu-parser>=1.0.0,<2.0.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.4"]
+
+[project.scripts]
+baidu-search = "baidu_search.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["baidu_search*"]

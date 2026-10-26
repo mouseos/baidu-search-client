@@ -1,0 +1,8 @@
+# Runtime dependencies (authoritative declaration: pyproject.toml).
+# baidu-parser is the sibling baidu_parser distribution; install it from
+# ../baidu-search-parser or from the built wheels in ../dist/.
+baidu-parser>=1.0.0,<2.0.0
+requests>=2.31
+pycryptodome>=3.19
+# tests only:
+pytest>=7.4

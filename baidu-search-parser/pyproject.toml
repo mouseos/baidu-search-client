@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "baidu-parser"
+version = "1.0.0"
+description = "Structured extraction from Baidu Android-app (wise) search-result HTML: organic results, ads, special cards, related searches and pagination, as JSON. No network access."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "lxml>=4.9",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.4"]
+
+[project.scripts]
+baidu-parser = "baidu_parser.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["baidu_parser*"]
